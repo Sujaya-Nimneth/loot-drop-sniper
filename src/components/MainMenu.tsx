@@ -5,11 +5,20 @@
 import { motion } from 'framer-motion';
 import { gameStore } from '@/engine/store';
 import { useGameStore } from '@/hooks/useGameStore';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import { getStoredHighScore } from '@/lib/leaderboard';
 import '@/engine/loop';
 
 export default function MainMenu() {
   const highScore = useGameStore((s) => s.highScore);
+
+  // Hydrate high score from localStorage leaderboard on first mount
+  useEffect(() => {
+    const stored = getStoredHighScore();
+    if (stored > 0) {
+      gameStore.setState({ highScore: stored });
+    }
+  }, []);
 
   const handleStart = useCallback(() => {
     gameStore.getState().startGame();

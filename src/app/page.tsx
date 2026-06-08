@@ -1,16 +1,17 @@
 'use client';
 
 // ─── Root Page — Game Shell ──────────────────────────────────────────────────
-// Orchestrates the game phases: menu → playing → over
-// Uses AnimatePresence for smooth transitions between phases.
+// Orchestrates game phases with AnimatePresence. Neon esports dark-mode shell.
 
 import dynamic from 'next/dynamic';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useGamePhase } from '@/hooks/useGameStore';
+import { gameStore } from '@/engine/store';
+import { useCallback } from 'react';
 
-// Dynamic imports to code-split game components (they're heavy with canvas/animation)
+// Dynamic imports — SSR disabled for game components
 const MainMenu = dynamic(() => import('@/components/MainMenu'), { ssr: false });
-const GameCanvas = dynamic(() => import('@/components/GameCanvas'), { ssr: false });
+const GameArena = dynamic(() => import('@/components/GameArena'), { ssr: false });
 const HUD = dynamic(() => import('@/components/HUD'), { ssr: false });
 const GameOver = dynamic(() => import('@/components/GameOver'), { ssr: false });
 
@@ -20,28 +21,38 @@ export default function Home() {
   return (
     <main
       id="game-root"
-      className="relative w-screen h-dvh overflow-hidden bg-slate-950"
+      className="relative w-screen h-dvh overflow-hidden"
+      style={{ background: '#030712' }}
     >
-      {/* Subtle background gradient that's always visible */}
+      {/* Persistent dark background with subtle gradient */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            'radial-gradient(ellipse at 50% 0%, rgba(15,23,42,1) 0%, rgba(2,6,23,1) 70%)',
+          background: 'radial-gradient(ellipse at 50% 0%, #0a0f1e 0%, #030712 60%)',
         }}
       />
 
-      {/* Phase-driven content with animated transitions */}
+      {/* Phase-driven content */}
       <AnimatePresence mode="wait">
         {phase === 'menu' && <MainMenu key="menu" />}
-        {(phase === 'playing' || phase === 'paused') && (
-          <GameCanvas key="game" />
-        )}
+        {(phase === 'playing' || phase === 'paused') && <GameArena key="game" />}
         {phase === 'over' && <GameOver key="over" />}
       </AnimatePresence>
 
-      {/* HUD overlay — rendered on top during gameplay */}
-      {(phase === 'playing' || phase === 'paused') && <HUD />}
+      {/* HUD overlay — on top during gameplay */}
+      <AnimatePresence>
+        {(phase === 'playing' || phase === 'paused') && (
+          <motion.div
+            key="hud"
+            initial={{ y: -60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -60, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          >
+            <HUD />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Pause overlay */}
       <AnimatePresence>
@@ -51,11 +62,7 @@ export default function Home() {
   );
 }
 
-// ─── Pause Overlay (inline — small enough to not need its own file) ──────────
-
-import { motion } from 'framer-motion';
-import { gameStore } from '@/engine/store';
-import { useCallback } from 'react';
+// ─── Pause Overlay ───────────────────────────────────────────────────────────
 
 function PauseOverlay() {
   const handleResume = useCallback(() => {
@@ -74,35 +81,48 @@ function PauseOverlay() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       id="pause-overlay"
-      className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-md"
+      className="absolute inset-0 z-40 flex flex-col items-center justify-center backdrop-blur-lg"
+      style={{ background: 'rgba(3,7,18,0.8)' }}
     >
-      <h2 className="text-3xl font-black text-slate-200 mb-8 tracking-tight">
-        PAUSED
-      </h2>
-      <div className="flex flex-col gap-3 w-full max-w-[200px]">
-        <button
-          id="resume-button"
-          onClick={handleResume}
-          className="
-            w-full py-3 rounded-2xl font-bold
-            bg-gradient-to-r from-cyan-500 to-blue-600 text-white
-            shadow-[0_0_24px_rgba(34,211,238,0.25)]
-            active:scale-95 transition-transform
-          "
+      {/* Grid */}
+      <div className="arena-grid opacity-20" />
+
+      <div className="relative z-10 flex flex-col items-center">
+        <h2
+          className="text-4xl font-black tracking-tight mb-8 text-glow-cyan"
+          style={{ color: '#00f0ff' }}
         >
-          RESUME
-        </button>
-        <button
-          id="quit-button"
-          onClick={handleQuit}
-          className="
-            w-full py-3 rounded-2xl font-semibold
-            bg-white/5 text-slate-400 border border-white/10
-            active:scale-95 transition-transform
-          "
-        >
-          Quit
-        </button>
+          PAUSED
+        </h2>
+        <div className="flex flex-col gap-3 w-full max-w-[220px]">
+          <button
+            id="resume-button"
+            onClick={handleResume}
+            className="
+              w-full py-3 rounded-2xl font-bold tracking-widest
+              border border-neon-cyan/40 active:scale-95 transition-transform
+            "
+            style={{
+              background: 'linear-gradient(135deg, rgba(0,240,255,0.15) 0%, rgba(0,100,255,0.15) 100%)',
+              color: '#00f0ff',
+              textShadow: '0 0 10px rgba(0,240,255,0.5)',
+              boxShadow: '0 0 25px rgba(0,240,255,0.12)',
+            }}
+          >
+            RESUME
+          </button>
+          <button
+            id="quit-button"
+            onClick={handleQuit}
+            className="
+              w-full py-3 rounded-2xl font-semibold
+              bg-white/[0.03] text-slate-500 border border-white/5
+              active:scale-95 transition-transform
+            "
+          >
+            Quit
+          </button>
+        </div>
       </div>
     </motion.div>
   );

@@ -3,6 +3,8 @@
 //   • Supply Crate (+10 pts on tap, -1 life if it hits the bottom)
 //   • Lag Spike    (-15 pts on tap, harmless if it passes the bottom)
 // Speed increases 5% every 30 seconds. Game starts with 3 lives.
+// entityVersion bumped each tick to drive React re-renders for entity rendering.
+// tapEffects queue consumed by the UI to trigger particles / screen-shake.
 
 import { createStore } from 'zustand/vanilla';
 import type {
@@ -10,6 +12,7 @@ import type {
   GameState,
   SupplyCrateEntity,
   LagSpikeEntity,
+  TapEffect,
 } from './types';
 import {
   FIXED_TIMESTEP,
@@ -46,9 +49,9 @@ function createInitialState(): GameState {
     speedMultiplier: 1.0,
     spawnAccumulator: 0,
     speedTier: 0,
-    lastTappedId: null,
-    lastTapPoints: 0,
     glitchIntensity: 0,
+    entityVersion: 0,
+    tapEffects: [],
   };
 }
 
@@ -59,7 +62,6 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FIXED-STEP TICK  (called from rAF accumulator — outside React)
-  // Each call advances the simulation by exactly FIXED_TIMESTEP seconds.
   // ═══════════════════════════════════════════════════════════════════════════
 
   fixedTick: () => {
@@ -67,18 +69,16 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
     if (state.phase !== 'playing') return;
 
     const dt = FIXED_TIMESTEP;
-
-    // ── Advance clock ──
     const elapsedTime = state.elapsedTime + dt;
 
-    // ── Speed ramp: +5% every 30 seconds ──
+    // Speed ramp: +5% every 30 seconds
     const newTier = Math.floor(elapsedTime / SPEED_RAMP_INTERVAL);
     let speedMultiplier = state.speedMultiplier;
     if (newTier > state.speedTier) {
       speedMultiplier = 1.0 + newTier * SPEED_RAMP_FACTOR;
     }
 
-    // ── Move entities ──
+    // Move entities
     let lives = state.lives;
     let glitchIntensity = 0;
     const entities = state.entities;
@@ -86,32 +86,26 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
     for (const entity of entities.values()) {
       if (!entity.alive) continue;
 
-      // Apply velocity with current speed multiplier
       entity.y += entity.vy * speedMultiplier * dt;
 
-      // Entity-specific updates
       if (entity.kind === 'supply-crate') {
-        const crate = entity as SupplyCrateEntity;
-        crate.rotation += crate.rotationSpeed * dt;
+        (entity as SupplyCrateEntity).rotation += (entity as SupplyCrateEntity).rotationSpeed * dt;
       } else if (entity.kind === 'lag-spike') {
         const spike = entity as LagSpikeEntity;
-        spike.pulsePhase += dt * 6; // oscillate ~1Hz
+        spike.pulsePhase += dt * 6;
         glitchIntensity = Math.max(glitchIntensity, spike.glitchIntensity * 0.3);
       }
 
-      // ── Bottom-of-screen check ──
+      // Bottom-of-screen check
       if (entity.y > 1.05) {
         entity.alive = false;
-
         if (entity.kind === 'supply-crate') {
-          // Missed supply crate → lose 1 life
           lives = Math.max(0, lives - 1);
         }
-        // Lag spikes that fall off-screen → no penalty (dodged successfully)
       }
     }
 
-    // ── Spawning ──
+    // Spawning
     const currentSpawnInterval = clamp(
       SPAWN_INTERVAL - state.speedTier * SPAWN_INTERVAL_DECAY,
       MIN_SPAWN_INTERVAL,
@@ -123,10 +117,10 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
       get().spawnEntity();
     }
 
-    // ── Cleanup dead ──
+    // Cleanup dead
     get().cleanupDead();
 
-    // ── Check game over ──
+    // Check game over
     if (lives <= 0) {
       set({
         lives: 0,
@@ -135,13 +129,13 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
         speedTier: newTier,
         spawnAccumulator,
         glitchIntensity,
-        lastTappedId: null,
+        entityVersion: state.entityVersion + 1,
       });
       get().endGame();
       return;
     }
 
-    // ── Commit (single set call) ──
+    // Commit (single set call — bumps entityVersion to drive React renders)
     set({
       elapsedTime,
       speedMultiplier,
@@ -149,7 +143,7 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
       spawnAccumulator,
       lives,
       glitchIntensity,
-      lastTappedId: null, // clear tap flash after one tick
+      entityVersion: state.entityVersion + 1,
     });
   },
 
@@ -192,8 +186,6 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
     }
   },
 
-  // ─── Cleanup ───────────────────────────────────────────────────────────────
-
   cleanupDead: () => {
     const entities = get().entities;
     for (const [id, entity] of entities) {
@@ -204,23 +196,13 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOW-FREQUENCY UI ACTIONS (called from React event handlers)
+  // LOW-FREQUENCY UI ACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /**
-   * Tap at normalized (x, y). Hit-tests all alive entities.
-   * - If a Supply Crate is hit: +10 points, entity destroyed.
-   * - If a Lag Spike is hit: -15 points, entity destroyed.
-   * - If nothing hit: no effect.
-   * Score is updated synchronously (instant feedback).
-   */
   tap: (tapX: number, tapY: number) => {
     const state = get();
     if (state.phase !== 'playing') return;
 
-    // Find the first entity whose padded hit-box contains the tap point.
-    // Iterate in reverse-spawn order so newer (top-most visually) entities
-    // are checked first — prevents tapping "through" overlapping entities.
     let hitEntity: SupplyCrateEntity | LagSpikeEntity | null = null;
 
     for (const entity of state.entities.values()) {
@@ -233,7 +215,6 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
 
       if (tapX >= left && tapX <= right && tapY >= top && tapY <= bottom) {
         hitEntity = entity;
-        // Don't break — keep iterating to find the latest-spawned (last in Map)
       }
     }
 
@@ -242,14 +223,26 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
     // Destroy the entity
     hitEntity.alive = false;
 
-    // Update score instantly
+    // Build tap effect for visual feedback
+    const effect: TapEffect = {
+      id: uid(),
+      entityKind: hitEntity.kind,
+      points: hitEntity.pointValue,
+      x: hitEntity.x + hitEntity.width / 2,
+      y: hitEntity.y + hitEntity.height / 2,
+    };
+
+    // Update score instantly + push effect
     const newScore = Math.max(0, state.score + hitEntity.pointValue);
 
     set({
       score: newScore,
-      lastTappedId: hitEntity.id,
-      lastTapPoints: hitEntity.pointValue,
+      tapEffects: [...state.tapEffects, effect],
     });
+  },
+
+  consumeTapEffects: () => {
+    set({ tapEffects: [] });
   },
 
   // ─── Phase Management ──────────────────────────────────────────────────────
@@ -292,7 +285,7 @@ export const gameStore = createStore<GameStore>()((set, get) => ({
   },
 }));
 
-// ─── Debug: expose store in dev ──────────────────────────────────────────────
+// Debug: expose in dev
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).__gameStore = gameStore;

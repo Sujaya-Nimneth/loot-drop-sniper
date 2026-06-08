@@ -25,34 +25,37 @@ export interface EntityBase {
 }
 
 // ─── Supply Crate ────────────────────────────────────────────────────────────
-// Tapping a Supply Crate awards +10 points.
-// If it reaches the bottom of the screen un-tapped, the player loses 1 life.
 
 export interface SupplyCrateEntity extends EntityBase {
   kind: 'supply-crate';
-  /** Points awarded when tapped */
   pointValue: 10;
-  /** Visual rotation angle in degrees (cosmetic) */
   rotation: number;
   rotationSpeed: number;
 }
 
 // ─── Lag Spike ───────────────────────────────────────────────────────────────
-// Tapping a Lag Spike penalises -15 points.
-// If it reaches the bottom un-tapped, nothing happens (it's a trap entity).
 
 export interface LagSpikeEntity extends EntityBase {
   kind: 'lag-spike';
-  /** Points deducted when tapped (negative) */
   pointValue: -15;
-  /** Glitch intensity for visual effects (0..1) */
   glitchIntensity: number;
-  /** Pulsation phase — drives a sine-wave size oscillation (cosmetic) */
   pulsePhase: number;
 }
 
 /** Union of all entity types */
 export type Entity = SupplyCrateEntity | LagSpikeEntity;
+
+// ─── Tap Effect (consumed by UI for visual feedback) ─────────────────────────
+
+export interface TapEffect {
+  id: string;
+  entityKind: EntityKind;
+  points: number;
+  /** Entity center X (normalized 0..1) */
+  x: number;
+  /** Entity center Y (normalized 0..1) */
+  y: number;
+}
 
 // ─── Game State ──────────────────────────────────────────────────────────────
 
@@ -63,30 +66,22 @@ export interface GameState {
   lives: number;
   maxLives: number;
   entities: Map<EntityId, Entity>;
-  /** Total game time in seconds */
   elapsedTime: number;
-  /** Current fall speed multiplier (increases 5% every 30s) */
   speedMultiplier: number;
-  /** Accumulator for spawn timing */
   spawnAccumulator: number;
-  /** Number of completed 30-second speed-ramp intervals */
   speedTier: number;
-  /** Flash feedback: entity ID that was just tapped (cleared next tick) */
-  lastTappedId: EntityId | null;
-  /** Flash feedback: points from last tap (for floating score popup) */
-  lastTapPoints: number;
-  /** Screen-shake / glitch intensity driven by active lag spikes */
   glitchIntensity: number;
+  /** Bumped each fixedTick — drives React re-renders for entity rendering */
+  entityVersion: number;
+  /** Pending visual effects from taps — consumed by the UI layer */
+  tapEffects: TapEffect[];
 }
 
 // ─── Store Actions ───────────────────────────────────────────────────────────
 
 export interface TickActions {
-  /** Advance simulation by one fixed timestep */
   fixedTick: () => void;
-  /** Spawn a new entity (called by fixedTick based on accumulator) */
   spawnEntity: () => void;
-  /** Remove dead entities from the map */
   cleanupDead: () => void;
 }
 
@@ -96,8 +91,9 @@ export interface UIActions {
   resumeGame: () => void;
   endGame: () => void;
   resetGame: () => void;
-  /** Tap at normalized (x, y) — hit-tests all alive entities, updates score instantly */
   tap: (x: number, y: number) => void;
+  /** Clear processed tap effects */
+  consumeTapEffects: () => void;
 }
 
 export type GameStore = GameState & TickActions & UIActions;

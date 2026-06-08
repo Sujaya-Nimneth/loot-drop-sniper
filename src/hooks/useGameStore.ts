@@ -1,12 +1,9 @@
 // ─── React Hooks for Zustand Game Store ──────────────────────────────────────
-// Thin wrappers with shallow equality to prevent unnecessary re-renders.
 
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { gameStore } from '@/engine/store';
-import type { GameStore, GamePhase } from '@/engine/types';
-
-// ─── Generic selector hook ───────────────────────────────────────────────────
+import type { GameStore, GamePhase, TapEffect } from '@/engine/types';
 
 /** Subscribe to an arbitrary slice of the game store */
 export function useGameStore<T>(selector: (state: GameStore) => T): T {
@@ -20,12 +17,10 @@ export function useGameStoreShallow<T>(selector: (state: GameStore) => T): T {
 
 // ─── Pre-built selectors ─────────────────────────────────────────────────────
 
-/** Current game phase — triggers re-render only on phase change */
 export function useGamePhase(): GamePhase {
   return useStore(gameStore, (s) => s.phase);
 }
 
-/** Score info */
 export function useScoreInfo() {
   return useStore(
     gameStore,
@@ -36,7 +31,6 @@ export function useScoreInfo() {
   );
 }
 
-/** Lives */
 export function useLivesInfo() {
   return useStore(
     gameStore,
@@ -47,28 +41,33 @@ export function useLivesInfo() {
   );
 }
 
-/** Glitch intensity (for visual effects layer) */
 export function useGlitchIntensity(): number {
   return useStore(gameStore, (s) => s.glitchIntensity);
 }
 
-/** Speed multiplier (for HUD display) */
 export function useSpeedMultiplier(): number {
   return useStore(gameStore, (s) => s.speedMultiplier);
 }
 
-/** Elapsed game time */
 export function useElapsedTime(): number {
   return useStore(gameStore, (s) => s.elapsedTime);
 }
 
-/** Speed tier (for difficulty indicator) */
 export function useSpeedTier(): number {
   return useStore(gameStore, (s) => s.speedTier);
 }
 
-// ─── Direct store access (for non-React code or event handlers) ──────────────
+/** Entity version — subscribe to trigger re-renders when entities change */
+export function useEntityVersion(): number {
+  return useStore(gameStore, (s) => s.entityVersion);
+}
 
+/** Pending tap effects — triggers re-render when new effects arrive */
+export function useTapEffects(): TapEffect[] {
+  return useStore(gameStore, (s) => s.tapEffects);
+}
+
+/** Direct store access (no React subscription) */
 export function getGameState() {
   return gameStore.getState();
 }

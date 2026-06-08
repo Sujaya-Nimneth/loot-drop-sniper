@@ -1,14 +1,11 @@
 'use client';
 
-// ─── Main Menu ───────────────────────────────────────────────────────────────
-// Animated start screen with title, start button, and high score display.
+// ─── Main Menu — Neon Esports Start Screen ───────────────────────────────────
 
 import { motion } from 'framer-motion';
 import { gameStore } from '@/engine/store';
 import { useGameStore } from '@/hooks/useGameStore';
 import { useCallback } from 'react';
-
-// Ensure loop module subscription is registered
 import '@/engine/loop';
 
 export default function MainMenu() {
@@ -28,104 +25,146 @@ export default function MainMenu() {
       id="main-menu"
       className="flex flex-col items-center justify-center h-full px-6 select-none"
     >
-      {/* Background decorative grid */}
+      {/* ── Background Effects ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(34,211,238,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.3) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
-        {/* Radial glow */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[100px]" />
-        <div className="absolute bottom-1/4 left-1/3 w-[300px] h-[300px] rounded-full bg-purple-500/5 blur-[80px]" />
+        {/* Animated grid */}
+        <div className="arena-grid opacity-60" />
+
+        {/* Neon glow orbs */}
+        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[500px] h-[400px] rounded-full bg-neon-cyan/[0.04] blur-[120px]" />
+        <div className="absolute bottom-[15%] left-[20%] w-[300px] h-[300px] rounded-full bg-neon-purple/[0.05] blur-[100px]" />
+        <div className="absolute top-[60%] right-[10%] w-[250px] h-[250px] rounded-full bg-neon-magenta/[0.03] blur-[80px]" />
+
+        {/* Scanlines */}
+        <div className="arena-scanlines absolute inset-0" />
       </div>
 
-      {/* Title */}
+      {/* ── Crosshair Decoration ── */}
       <motion.div
-        initial={{ y: -30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.1, duration: 0.6, ease: 'easeOut' }}
-        className="relative z-10 text-center mb-8"
+        initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
+        animate={{ opacity: 0.08, scale: 1, rotate: 0 }}
+        transition={{ delay: 0.2, duration: 0.8 }}
+        className="absolute top-[18%] left-1/2 -translate-x-1/2 w-[200px] h-[200px] pointer-events-none"
       >
-        <h1 className="text-5xl sm:text-6xl font-black tracking-tight">
-          <span className="bg-gradient-to-br from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <svg viewBox="0 0 100 100" className="w-full h-full" stroke="#00f0ff" strokeWidth="0.5" fill="none">
+          <circle cx="50" cy="50" r="40" />
+          <circle cx="50" cy="50" r="20" />
+          <line x1="50" y1="5" x2="50" y2="25" />
+          <line x1="50" y1="75" x2="50" y2="95" />
+          <line x1="5" y1="50" x2="25" y2="50" />
+          <line x1="75" y1="50" x2="95" y2="50" />
+        </svg>
+      </motion.div>
+
+      {/* ── Title ── */}
+      <motion.div
+        initial={{ y: -40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.15, duration: 0.7, ease: 'easeOut' }}
+        className="relative z-10 text-center mb-6"
+      >
+        <h1 className="text-5xl sm:text-6xl font-black tracking-tight leading-none">
+          <span
+            className="block bg-clip-text text-transparent"
+            style={{
+              backgroundImage: 'linear-gradient(135deg, #00f0ff 0%, #00aaff 50%, #aa44ff 100%)',
+              filter: 'drop-shadow(0 0 20px rgba(0,240,255,0.3))',
+            }}
+          >
             LOOT DROP
           </span>
-          <br />
-          <span className="text-slate-200 text-3xl sm:text-4xl font-bold tracking-[0.2em]">
+          <span
+            className="block text-3xl sm:text-4xl font-bold tracking-[0.25em] mt-1"
+            style={{
+              color: '#f1f5f9',
+              textShadow: '0 0 20px rgba(0,240,255,0.2)',
+            }}
+          >
             SNIPER
           </span>
         </h1>
+
+        {/* Neon divider */}
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="mt-3 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"
+          transition={{ delay: 0.6, duration: 0.5 }}
+          className="mt-4 h-[2px] w-48 mx-auto"
+          style={{
+            background: 'linear-gradient(90deg, transparent, #00f0ff, transparent)',
+            boxShadow: '0 0 12px rgba(0,240,255,0.5)',
+          }}
         />
       </motion.div>
 
-      {/* Tagline */}
+      {/* ── Tagline ── */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="relative z-10 text-sm text-slate-500 mb-10 tracking-wide text-center max-w-xs"
+        transition={{ delay: 0.5 }}
+        className="relative z-10 text-sm text-slate-500 mb-10 tracking-wide text-center max-w-[280px] leading-relaxed"
       >
-        Shoot falling crates. Dodge lag spikes. Chase the combo.
+        Tap <span className="text-neon-cyan/80">supply crates</span> for points.{' '}
+        Avoid <span className="text-neon-red/80">lag spikes</span>. Survive.
       </motion.p>
 
-      {/* Start button */}
+      {/* ── Start Button ── */}
       <motion.button
         id="start-button"
-        initial={{ y: 20, opacity: 0 }}
+        initial={{ y: 25, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.6, duration: 0.5 }}
+        transition={{ delay: 0.7, duration: 0.5 }}
         whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileTap={{ scale: 0.93 }}
         onClick={handleStart}
         className="
-          relative z-10 px-10 py-3.5 rounded-2xl
-          bg-gradient-to-r from-cyan-500 to-blue-600
-          text-white font-bold text-lg tracking-wide
-          shadow-[0_0_30px_rgba(34,211,238,0.3)]
-          active:shadow-[0_0_15px_rgba(34,211,238,0.5)]
-          transition-shadow duration-200
+          relative z-10 px-12 py-4 rounded-2xl
+          font-black text-lg tracking-widest
+          border border-neon-cyan/40
+          active:border-neon-cyan/60
+          transition-all duration-200
         "
+        style={{
+          background: 'linear-gradient(135deg, rgba(0,240,255,0.15) 0%, rgba(0,100,255,0.15) 100%)',
+          color: '#00f0ff',
+          textShadow: '0 0 10px rgba(0,240,255,0.5)',
+          boxShadow: '0 0 30px rgba(0,240,255,0.15), inset 0 0 20px rgba(0,240,255,0.05)',
+        }}
       >
         START GAME
       </motion.button>
 
-      {/* High score */}
+      {/* ── High Score ── */}
       {highScore > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 0.9 }}
           className="relative z-10 mt-6 text-center"
         >
-          <span className="text-xs uppercase tracking-widest text-slate-600">
-            Best Score
+          <span className="text-[10px] uppercase tracking-[0.2em] text-slate-600 font-semibold">
+            High Score
           </span>
-          <p className="text-lg font-semibold text-amber-400 tabular-nums">
+          <p
+            className="text-xl font-black tabular-nums text-glow-amber mt-0.5"
+            style={{ color: '#ffaa00' }}
+          >
             {highScore.toLocaleString()}
           </p>
         </motion.div>
       )}
 
-      {/* Controls hint */}
+      {/* ── Controls Hint ── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.0 }}
+        transition={{ delay: 1.1 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 text-xs text-slate-600"
       >
-        <span className="inline-block w-4 h-4 rounded border border-slate-700 text-center leading-4 text-[10px]">
-          ⬇
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded border border-slate-700/50 text-[10px]">
+          👆
         </span>
-        <span>Tap to shoot</span>
+        <span className="tracking-wider">Tap to snipe</span>
       </motion.div>
     </motion.div>
   );

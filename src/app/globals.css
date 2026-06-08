@@ -1,18 +1,25 @@
 @import "tailwindcss";
 
-/* ─── Game Design Tokens ──────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  LOOT DROP SNIPER — Neon Esports Dark Mode Design System                  */
+/* ═══════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
   --font-sans: var(--font-inter);
 
-  /* Game palette */
-  --color-game-bg: #020617;
-  --color-game-surface: #0f172a;
-  --color-game-border: rgba(255, 255, 255, 0.06);
-  --color-game-text: #e2e8f0;
-  --color-game-text-muted: #64748b;
-  --color-game-accent: #22d3ee;
-  --color-game-accent-glow: rgba(34, 211, 238, 0.3);
+  /* ─── Neon Palette ─── */
+  --color-neon-cyan: #00f0ff;
+  --color-neon-magenta: #ff00aa;
+  --color-neon-green: #00ff88;
+  --color-neon-red: #ff0044;
+  --color-neon-amber: #ffaa00;
+  --color-neon-purple: #aa44ff;
+
+  /* ─── Surface Tiers ─── */
+  --color-surface-0: #030712;
+  --color-surface-1: #0a0f1e;
+  --color-surface-2: #111827;
+  --color-surface-3: #1e293b;
 }
 
 /* ─── Global Resets ───────────────────────────────────────────────────────── */
@@ -26,14 +33,13 @@ html {
 }
 
 body {
-  background: var(--color-game-bg);
-  color: var(--color-game-text);
+  background: var(--color-surface-0);
+  color: #f1f5f9;
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   overscroll-behavior: none;
   touch-action: manipulation;
 }
 
-/* Prevent pull-to-refresh on mobile */
 html, body {
   overflow: hidden;
   position: fixed;
@@ -41,54 +47,109 @@ html, body {
   height: 100%;
 }
 
-/* ─── Canvas Rendering ────────────────────────────────────────────────────── */
+/* ─── Screen Shake ────────────────────────────────────────────────────────── */
 
-canvas {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+@keyframes screen-shake {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  10%  { transform: translate(-6px, 3px) rotate(-0.7deg); }
+  20%  { transform: translate(5px, -4px) rotate(0.7deg); }
+  30%  { transform: translate(-4px, -2px) rotate(-0.5deg); }
+  40%  { transform: translate(4px, 4px) rotate(0.5deg); }
+  50%  { transform: translate(-3px, 1px) rotate(-0.3deg); }
+  60%  { transform: translate(3px, -2px) rotate(0.3deg); }
+  70%  { transform: translate(-2px, 3px) rotate(-0.2deg); }
+  80%  { transform: translate(2px, -1px) rotate(0.2deg); }
+  90%  { transform: translate(-1px, 0px) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
 }
 
-/* ─── Scrollbar Hide (for any overflow areas) ─────────────────────────────── */
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+.animate-screen-shake {
+  animation: screen-shake 300ms ease-out;
 }
 
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* ─── Entity Glow Pulse ───────────────────────────────────────────────────── */
+
+@keyframes neon-pulse-cyan {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 240, 255, 0.3), 0 0 20px rgba(0, 240, 255, 0.1); }
+  50%      { box-shadow: 0 0 14px rgba(0, 240, 255, 0.5), 0 0 35px rgba(0, 240, 255, 0.2); }
 }
 
-/* ─── Glitch Effect Keyframes ─────────────────────────────────────────────── */
-
-@keyframes glitch-shift {
-  0%, 100% { transform: translate(0); }
-  20% { transform: translate(-2px, 1px); }
-  40% { transform: translate(2px, -1px); }
-  60% { transform: translate(-1px, -2px); }
-  80% { transform: translate(1px, 2px); }
+@keyframes neon-pulse-red {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(255, 0, 68, 0.4)); }
+  50%      { filter: drop-shadow(0 0 16px rgba(255, 0, 68, 0.7)); }
 }
 
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
+.animate-neon-cyan {
+  animation: neon-pulse-cyan 1.5s ease-in-out infinite;
+}
+
+.animate-neon-red {
+  animation: neon-pulse-red 1.2s ease-in-out infinite;
+}
+
+/* ─── Scanline Overlay ────────────────────────────────────────────────────── */
+
+@keyframes scanline-sweep {
+  0%   { transform: translateY(-100%); }
   100% { transform: translateY(100vh); }
 }
 
-.animate-glitch {
-  animation: glitch-shift 0.15s infinite;
+.arena-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 240, 255, 0.015) 2px,
+    rgba(0, 240, 255, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
 }
 
-.animate-scanline {
-  animation: scanline 3s linear infinite;
+/* ─── Arena Grid Background ───────────────────────────────────────────────── */
+
+.arena-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 80%);
+  pointer-events: none;
 }
 
-/* ─── Ammo Pulse ──────────────────────────────────────────────────────────── */
+/* ─── HUD Glassmorphism ───────────────────────────────────────────────────── */
 
-@keyframes ammo-pulse {
-  0%, 100% { box-shadow: 0 0 4px rgba(34, 211, 238, 0.3); }
-  50% { box-shadow: 0 0 10px rgba(34, 211, 238, 0.6); }
+.hud-glass {
+  background: rgba(3, 7, 18, 0.65);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.12);
 }
 
-.animate-ammo-pulse {
-  animation: ammo-pulse 1.5s ease-in-out infinite;
+/* ─── Neon Text Glow Utility ──────────────────────────────────────────────── */
+
+.text-glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.3);
 }
+
+.text-glow-red {
+  text-shadow: 0 0 8px rgba(255, 0, 68, 0.6), 0 0 20px rgba(255, 0, 68, 0.3);
+}
+
+.text-glow-amber {
+  text-shadow: 0 0 8px rgba(255, 170, 0, 0.5), 0 0 16px rgba(255, 170, 0, 0.2);
+}
+
+.text-glow-green {
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.6), 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+/* ─── Scrollbar Hide ──────────────────────────────────────────────────────── */
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

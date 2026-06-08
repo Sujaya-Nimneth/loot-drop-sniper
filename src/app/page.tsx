@@ -1,65 +1,109 @@
-import Image from "next/image";
+'use client';
+
+// ─── Root Page — Game Shell ──────────────────────────────────────────────────
+// Orchestrates the game phases: menu → playing → over
+// Uses AnimatePresence for smooth transitions between phases.
+
+import dynamic from 'next/dynamic';
+import { AnimatePresence } from 'framer-motion';
+import { useGamePhase } from '@/hooks/useGameStore';
+
+// Dynamic imports to code-split game components (they're heavy with canvas/animation)
+const MainMenu = dynamic(() => import('@/components/MainMenu'), { ssr: false });
+const GameCanvas = dynamic(() => import('@/components/GameCanvas'), { ssr: false });
+const HUD = dynamic(() => import('@/components/HUD'), { ssr: false });
+const GameOver = dynamic(() => import('@/components/GameOver'), { ssr: false });
 
 export default function Home() {
+  const phase = useGamePhase();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main
+      id="game-root"
+      className="relative w-screen h-dvh overflow-hidden bg-slate-950"
+    >
+      {/* Subtle background gradient that's always visible */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse at 50% 0%, rgba(15,23,42,1) 0%, rgba(2,6,23,1) 70%)',
+        }}
+      />
+
+      {/* Phase-driven content with animated transitions */}
+      <AnimatePresence mode="wait">
+        {phase === 'menu' && <MainMenu key="menu" />}
+        {(phase === 'playing' || phase === 'paused') && (
+          <GameCanvas key="game" />
+        )}
+        {phase === 'over' && <GameOver key="over" />}
+      </AnimatePresence>
+
+      {/* HUD overlay — rendered on top during gameplay */}
+      {(phase === 'playing' || phase === 'paused') && <HUD />}
+
+      {/* Pause overlay */}
+      <AnimatePresence>
+        {phase === 'paused' && <PauseOverlay />}
+      </AnimatePresence>
+    </main>
+  );
+}
+
+// ─── Pause Overlay (inline — small enough to not need its own file) ──────────
+
+import { motion } from 'framer-motion';
+import { gameStore } from '@/engine/store';
+import { useCallback } from 'react';
+
+function PauseOverlay() {
+  const handleResume = useCallback(() => {
+    gameStore.getState().resumeGame();
+  }, []);
+
+  const handleQuit = useCallback(() => {
+    gameStore.getState().endGame();
+  }, []);
+
+  return (
+    <motion.div
+      key="pause-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      id="pause-overlay"
+      className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-md"
+    >
+      <h2 className="text-3xl font-black text-slate-200 mb-8 tracking-tight">
+        PAUSED
+      </h2>
+      <div className="flex flex-col gap-3 w-full max-w-[200px]">
+        <button
+          id="resume-button"
+          onClick={handleResume}
+          className="
+            w-full py-3 rounded-2xl font-bold
+            bg-gradient-to-r from-cyan-500 to-blue-600 text-white
+            shadow-[0_0_24px_rgba(34,211,238,0.25)]
+            active:scale-95 transition-transform
+          "
+        >
+          RESUME
+        </button>
+        <button
+          id="quit-button"
+          onClick={handleQuit}
+          className="
+            w-full py-3 rounded-2xl font-semibold
+            bg-white/5 text-slate-400 border border-white/10
+            active:scale-95 transition-transform
+          "
+        >
+          Quit
+        </button>
+      </div>
+    </motion.div>
   );
 }
